@@ -1,0 +1,31 @@
+# .github/workflows/docker-ci.yml
+name: Docker Image CI
+# este workflow corre cuando se hace push o pull request a la rama main
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+# jobs  
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set dynamic tag
+      run: echo "TAG=$(date +%s)" >> $GITHUB_ENV
+
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag alvarososa/lanubedealvaro:${{ env.TAG }}
+
+    - name: Docker Run
+      uses: tj-actions/docker-run@v2.2.1
+      with:
+        # Docker image
+        image: alvarososa/lanubedealvaro:${{ env.TAG }}
+        # Container name
+        name: lanubedealvaro-test
+        # Options to pass to docker run (correr en background para que no bloquee los siguientes pasos si es necesario)
+        options: -d
