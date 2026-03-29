@@ -1,0 +1,42 @@
+name: Kubernetes CD
+
+# Se disparará automáticamente cuando el CI de Docker termine con éxito
+# o también puedes ejecutarlo manualmente (workflow_dispatch)
+on:
+  workflow_run:
+    workflows: ["Docker Image CI"]   # Debe coincidir con el 'name:' de tu docker-ci.yml
+    types:
+      - completed
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Solo ejecutar si la construcción del docker CI fue exitosa
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    # Este paso configura la conexión con tu clúster de Kubernetes usando credenciales
+    # Deberás crear un "Secret" en tu repositorio de GitHub llamado KUBECONFIG
+    - name: Configurar conexión a Kubernetes (kubeconfig)
+      uses: azure/k8s-set-context@v3
+      with:
+        method: kubeconfig
+        kubeconfig: ${{ secrets.KUBECONFIG }}
+
+    # Una vez conectados, podemos aplicar los manifiestos de Kubernetes
+    - name: Desplegar en el Clúster
+      run: |
+        # Aplicar el Deployment y el Service asumiendo que están en una carpeta `k8s/`
+        # kubectl apply -f k8s/deployment.yaml
+        # kubectl apply -f k8s/service.yaml
+        
+        # Como estamos asumiendo que desplegaste con tag "latest", 
+        # forzamos a Kubernetes a descargar la nueva imagen reiniciando los pods
+        kubectl rollout restart deployment/lanubedealvaro-deployment
+        
+        # Esperamos a que el despliegue termine exitosamente
+        kubectl rollout status deployment/lanubedealvaro-deployment
